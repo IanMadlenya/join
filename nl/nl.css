@@ -1,0 +1,11 @@
+/* Silex Labs Newsletter stylesheet */
+
+body
+{
+ font-family:arial, sans-serif;
+}
+
+body img:first-of-type
+{
+ float:right;
+}
