@@ -1,0 +1,1006 @@
+<!doctype html>
+<html>
+ <head>
+  <title>sl-md-renderer</title>
+  <meta charset="utf-8" />
+ </head>
+ <body>
+  <script>
+   "use strict";
+   function is_strict()
+   {
+    return !this;
+   }
+   const clear=(array)=>
+   {
+    check(is_array(array));
+    return array.splice(0);
+   }
+   const remove=(array,index)=>
+   {
+    check(is_array(array));
+    check(is_number(index));
+    check(index>=0);
+    check(index<array.length);
+    return front(array.splice(index,1));
+   }
+   const shift=(array)=>
+   {
+    check(is_array(array));
+    check(array.length>0);
+    return array.shift();
+   }
+   const pop=(array)=>
+   {
+    check(is_array(array));
+    check(array.length>0);
+    return array.pop();
+   }
+   const at=(array,index)=>
+   {
+    check(is_array(array));
+    check(is_number(index));
+    if(index>=0)
+    {
+     check(index>=0);
+     check(index<array.length);
+     return array[index];
+    }
+    check(abs(index)<=array.length);
+    return array[array.length+index];
+   }
+   const front=(array)=>at(array,0);
+   const back=(array)=>at(array,-1);
+   const trap=(lambda,...xs)=>
+   {
+    check(is_function(lambda));
+    try
+    {
+     return lambda(...xs);
+    }
+    catch(exception)
+    {
+    }
+   }
+   const hold=(lambda,...xs)=>
+   {
+    check(is_function(lambda));
+    try
+    {
+     return lambda(...xs);
+    }
+    catch(exception)
+    {
+     return exception;
+    }
+   }
+   const report=(lambda,...xs)=>
+   {
+    check(is_function(lambda));
+    try
+    {
+     return lambda(...xs);
+    }
+    catch(exception)
+    {
+     log();
+     log("Exception caught");
+     log(" message",json(exception.message));
+     log(" type",json(type_name(exception)));
+     log(indent(callstack(exception)));
+     return exception;
+    }
+   }
+   const iif=(condition,yes,no)=>condition?yes:no;
+   const optional=(...xs)=>xs.find(is_something);
+   const flatten=(x)=>
+   {
+    x=clone(x);
+    const is_deep=(x)=>(is_array(x)||is_object(x))&&length(x)>0;
+    const lines=[];
+    const visit=(x,ancestors=[])=>
+    {
+     if(is_deep(x))
+     {
+      for(let key in x)
+      {
+       visit(x[key],[...ancestors,key]);
+      }
+      return;
+     }
+     const string=space("#"+pad_number(lines.length,4),ancestors.join("."),inspect(x));
+     lines.push(string);
+    }
+    visit(x);
+    return ellipsis(join(lines));
+   }
+   const callstack=(exception)=>
+   {
+    check(exception instanceof Error);
+    const data=source_data();
+    const tag=data.tag;
+    const source=split(data.source);
+    const nearby=(number)=>
+    {
+     const range=5;
+     const lines=[];
+     for(let i=0;i<range;i++)
+     {
+      const index=trunc(number-range/2+i);
+      if(index<0)
+       continue;
+      if(index>=source.length)
+       break;
+      const prompt=index+1==number?">":" ";
+      const string=space(pad_number(index+1,4," "),prompt,source[index]);
+      lines.push(string);
+     }
+     if(lines.length>0)
+      return join(lines);
+    }
+    const stack=split(exception.stack).map((x)=>x.trim());
+    if(is_v8())
+     shift(stack);
+    const report=[];
+    for(let frame of stack)
+    {
+     report.push(frame);
+     const parts=frame.split(":");
+     if(parts.length<3)
+      continue;
+     if(!at(parts,-3).endsWith(tag))
+      continue;
+     const number=parse_number(at(parts,-2));
+     if(is_undefined(number))
+      continue;
+     const string=nearby(number);
+     if(is_defined(string))
+      report.push(indent(string));
+    }
+    return ellipsis(join(report));
+   }
+   const context=
+   {
+    timer:{id:-1,list:[]},
+   }
+   const entry=()=>
+   {
+    const go=()=>
+    {
+     check(is_strict());
+     const compile_date=space("Feb 23 2017","12:34:17");
+     log("compile",json(space(ago(compile_date),"ago")));
+     return main(...argv());
+    }
+    return report(go);
+   }
+   const stop=(message="stop",...xs)=>
+   {
+    throw new Error(space(message,...xs));
+   }
+   const check=(test,message="check",...xs)=>
+   {
+    if(test)
+     return;
+    stop(message,...xs);
+   }
+   const compact=(string)=>
+   {
+    check(is_string(string));
+    const lines=split(string);
+    while(lines.length>0)
+    {
+     const line=front(lines).trimRight();
+     if(line.length>0)
+      break;
+     lines.shift();
+    }
+    for(let i=0;i<lines.length;)
+    {
+     const line=at(lines,i).trimRight();
+     if(line.length==0&&i>0&&at(lines,i-1).length==0)
+     {
+      remove(lines,i);
+      continue;
+     }
+     lines[i]=line;
+     i++;
+    }
+    return join(lines).trimRight();
+   }
+   const format=(...xs)=>
+   {
+    let string="";
+    for(let key in xs)
+    {
+     const current=xs[key];
+     if(is_string(current))
+     {
+      string+=current;
+      string+=" ";
+      continue;
+     }
+     const buffer=inspect(current);
+     if(occurence(buffer,"\n")>0)
+     {
+      string=string.trimRight();
+      if(string.length==0)
+       string=buffer;
+      else
+      {
+       string+="\n";
+       string+=indent(buffer);
+      }
+      string+="\n";
+     }
+     else
+     {
+      string+=buffer;
+      string+=" ";
+     }
+    }
+    return string.trimRight();
+   }
+   const indentation=(string)=>
+   {
+    check(is_string(string));
+    let result=0;
+    let first=true;
+    const lines=split(string);
+    for(let key in lines)
+    {
+     const current=lines[key];
+     if(current.trimRight().length==0)
+      continue;
+     const depth=current.length-current.trimLeft().length;
+     if(first)
+     {
+      result=depth;
+      first=false;
+     }
+     else
+      result=min(result,depth);
+    }
+    return result;
+   }
+   const unindent=(string)=>
+   {
+    check(is_string(string));
+    const depth=indentation(string);
+    if(depth==0)
+     return string;
+    return join(split(string).map((x)=>x.slice(depth)));
+   }
+   const indent=(string,depth=1)=>
+   {
+    check(is_string(string));
+    check(is_number(depth));
+    check(depth>=0);
+    if(depth==0)
+     return string;
+    const lines=split(string);
+    for(let key in lines)
+    {
+     const current=lines[key];
+     if(current.trimRight().length==0)
+      continue;
+     lines[key]=" ".repeat(depth)+current;
+    }
+    return join(lines);
+   }
+   const is_something=(x)=>!is_nothing(x);
+   const is_nothing=(x)=>is_undefined(x)||is_null(x);
+   const is_defined=(x)=>!is_undefined(x);
+   const is_undefined=(x)=>x===undefined;
+   const is_null=(x)=>x===null;
+   const is_true=(x)=>x===true;
+   const is_false=(x)=>x===false;
+   const is_boolean=(x)=>typeof x=="boolean";
+   const is_integer=Number.isInteger;
+   const is_number=(x)=>typeof x=="number"&&!Number.isNaN(x)&&Number.isFinite(x);
+   const is_string=(x)=>typeof x=="string";
+   const is_array=Array.isArray;
+   const is_object=(x)=>!is_null(x)&&typeof x=="object";
+   const is_function=(x)=>typeof x=="function";
+   const is_parsable=(x)=>is_string(x)&&/^\S/.test(x)&&/\S$/.test(x);
+   const is_space=(x)=>is_string(x)&&/^\s+$/.test(x)&&!x.includes("\n");
+   const is_digit=(x)=>is_string(x)&&/^[0-9]+$/.test(x);
+   const is_alpha=(x)=>is_string(x)&&/^[a-z]+$/i.test(x);
+   const is_identifier=(x)=>is_string(x)&&/^[_a-z][_a-z0-9]*$/i.test(x);
+   const is_numeric=(x)=>
+   {
+    if(is_number(x))
+     return true;
+    if(is_string(x))
+     return is_defined(parse_number(x));
+    return false;
+   }
+   const json=(x)=>
+   {
+    const result=JSON.stringify(x);
+    check(is_string(result));
+    return result;
+   }
+   const log=(...xs)=>console.log(format(...xs));
+   const min=Math.min;
+   const max=Math.max;
+   const trunc=Math.trunc;
+   const abs=Math.abs;
+   const rand=(range)=>
+   {
+    check(is_number(range))
+    check(range>=0);
+    const result=Math.random()*range;
+    if(is_integer(range))
+     return trunc(result);
+    return result;
+   }
+   const length=(x)=>
+   {
+    if(is_string(x))
+     return x.length;
+    if(is_array(x))
+     return x.length;
+    if(is_object(x))
+     return length(Object.keys(x));
+    const result=x.length;
+    if(is_number(result))
+     return result;
+    stop();
+   }
+   const type_name=(x)=>
+   {
+    if(is_null(x))
+     return "null";
+    const result=trap((x)=>x.constructor.name.toLowerCase(),x);
+    if(is_string(result))
+     return result;
+    return typeof x;
+   }
+   const clone=(x)=>
+   {
+    const timeout=watch_dog("Timeout cloning a",json(type_name(x)),"instance");
+    const stack=[];
+    const is_circular=(x)=>stack.includes(x);
+    const copy=(x)=>
+    {
+     timeout();
+     let result=x;
+     if(is_circular(result))
+      return {circular:type_name(result)};
+     stack.push(x);
+     if(is_array(x))
+     {
+      result=x.map(copy);
+     }
+     else if(is_object(x))
+     {
+      result={};
+      for(let key in x)
+      {
+       result[key]=copy(x[key]);
+      }
+     }
+     stack.pop();
+     return result;
+    }
+    return copy(x);
+   }
+   const parse_number=(string)=>
+   {
+    check(is_string(string));
+    if(!is_parsable(string))
+     return;
+    const result=Number.parseFloat(string);
+    if(is_number(result))
+     return result;
+   }
+   const parse_string=(string)=>
+   {
+    check(is_string(string));
+    if(!is_parsable(string))
+     return;
+    const result=parse_json(string);
+    if(is_string(result))
+     return result;
+   }
+   const parse_json=(string)=>
+   {
+    check(is_string(string));
+    if(!is_parsable(string))
+     return;
+    const result=trap(JSON.parse,string);
+    if(is_number(result)||is_string(result)||is_array(result)||is_object(result))
+     return result;
+   }
+   const parse_url=(string)=>
+   {
+    check(is_string(string));
+    if(!is_parsable(string))
+     return;
+    const url=trap(()=>new URL(string));
+    if(is_undefined(url))
+     return;
+    const href=url.href;
+    const protocol=url.protocol.slice(0,-1);
+    const host=url.hostname;
+    const port=url.port;
+    const user=url.username;
+    const password=url.password;
+    const path=url.pathname;
+    const search=url.search.slice(1);
+    const hash=url.hash.slice(1);
+    return {href,protocol,host,port,user,password,path,search,hash};
+   }
+   const parse_headers=(string)=>
+   {
+    check(is_string(string));
+    const result={};
+    const lines=split(string.trimRight());
+    if(lines.length==0)
+     return;
+    for(let current of lines)
+    {
+     const parts=current.split(":");
+     if(parts.length<2)
+      return;
+     const name=front(parts);
+     if(name.length==0)
+      return;
+     const value=parts.slice(1).join(":").trim();
+     if(value.length==0)
+      return;
+     const number=parse_number(value);
+     result[name]=is_defined(number)?number:value;
+    }
+    return result;
+   }
+   const dir_name=(path)=>parse_path(path).dir;
+   const base_name=(path)=>parse_path(path).base;
+   const file_name=(path)=>parse_path(path).name;
+   const ext_name=(path)=>parse_path(path).ext;
+   const ellipsis=(string,length=80)=>
+   {
+    check(is_string(string));
+    check(is_number(length));
+    check(length>=0);
+    const dots=" ...";
+    const lines=split(string);
+    for(let key in lines)
+    {
+     const current=lines[key];
+     if(current.length<length)
+      continue;
+     let line=current.trimRight();
+     if(line.length>=length)
+     {
+      const width=max(length-dots.length,0);
+      line=line.slice(0,width+1).trimRight();
+      line+=dots;
+     }
+     lines[key]=line;
+    }
+    return join(lines);
+   }
+   const pad_start=(string,length,pattern=" ")=>
+   {
+    check(is_string(string));
+    check(is_number(length));
+    check(is_string(pattern));
+    check(length>=0);
+    check(pattern.length>0);
+    if(string.length>=length)
+     return string;
+    const buffer=pattern.repeat(length)+string;
+    return buffer.slice(-length);
+   }
+   const pad_number=(number,length,pattern="0")=>
+   {
+    check(is_number(number));
+    return pad_start(to_string(number),length,pattern);
+   }
+   const occurence=(string,search)=>
+   {
+    check(is_string(string));
+    check(is_string(search));
+    if(string.length==0||search.length==0)
+     return 0;
+    let result=0;
+    let index=0;
+    while(index<string.length)
+    {
+     index=string.indexOf(search,index);
+     if(index<0)
+      break;
+     result++;
+     index+=search.length;
+    }
+    return result;
+   }
+   const replace=(string,search,what)=>
+   {
+    check(is_string(string));
+    check(is_string(search));
+    check(is_string(what));
+    if(string.length==0||search.length==0)
+     return string;
+    let result=string;
+    const timeout=watch_dog();
+    while(true)
+    {
+     const index=result.indexOf(search);
+     if(index<0)
+      break;
+     result=result.slice(0,index)+what+result.slice(index+search.length);
+     timeout();
+    }
+    return result;
+   }
+   const delimit=(string,separator)=>
+   {
+    check(is_string(string));
+    check(is_string(separator));
+    if(string.length==0||separator.length==0)
+     return [string];
+    const result=[];
+    let index=0;
+    while(index<string.length)
+    {
+     const next=string.indexOf(separator,index);
+     if(next<0)
+     {
+      result.push(string.slice(index));
+      break;
+     }
+     if(next>index)
+      result.push(string.slice(index,next));
+     result.push(separator);
+     index=next+separator.length;
+    }
+    check(result.join("")==string);
+    return result;
+   }
+   const join=(array)=>
+   {
+    check(is_array(array));
+    return array.join("\n");
+   }
+   const split=(string)=>
+   {
+    check(is_string(string));
+    return string.split("\n");
+   }
+   const space=(...xs)=>xs.join(" ");
+   const paren=(...xs)=>"("+space(...xs)+")";
+   const bracket=(...xs)=>"["+space(...xs)+"]";
+   const brace=(...xs)=>"{"+space(...xs)+"}";
+   const to_string=(x)=>
+   {
+    if(is_string(x))
+     return x;
+    const result=trap((x)=>x.toString(),x);
+    if(is_string(result))
+     return result;
+    return json(x);
+   }
+   const time=(x=new Date)=>
+   {
+    if(is_number(x))
+     return x;
+    if(is_string(x))
+    {
+     const date=new Date(x);
+     return date.getTime()/1000;
+    }
+    if(x instanceof Date)
+     return x.getTime()/1000;
+    stop();
+   }
+   const startup=time();
+   const now=()=>time()-startup;
+   const date=(x)=>
+   {
+    const date=new Date(time(x)*1000);
+    const parts=
+    [
+     date.getDate(),
+     "/"+(date.getMonth()+1),
+     "/"+date.getFullYear(),
+     " "+date.getHours(),
+     ":"+pad_number(date.getMinutes(),2)
+    ];
+    return parts.join("");
+   }
+   const ago=(x)=>
+   {
+    const seconds=abs(time()-time(x));
+    let count=0;
+    let unit="";
+    if(seconds<60)
+    {
+     count=seconds;
+     unit="seconds";
+    }
+    else if(seconds<2*60*60)
+    {
+     count=seconds/60;
+     unit="minutes";
+    }
+    else if(seconds<2*60*60*24)
+    {
+     count=seconds/60/60;
+     unit="hours";
+    }
+    else
+    {
+     count=seconds/60/60/24;
+     unit="days";
+    }
+    return space(trunc(count),unit);
+   }
+   const interval=1/20;
+   const set_interval=(on,delay=interval)=>
+   {
+    check(is_function(on));
+    check(is_number(delay));
+    check(delay>=0);
+    let result=-1;
+    const on_interval=()=>
+    {
+     const exception=report(on);
+     if(exception instanceof Error)
+      clear_interval(result);
+    }
+    result=setInterval(partial(report,on_interval),delay*1000);
+    return result;
+   }
+   const clear_interval=(id)=>
+   {
+    check(is_number(id));
+    clearInterval(id);
+   }
+   const set_immediate=(on)=>
+   {
+    check(is_function(on));
+    setImmediate(partial(report,on));
+   }
+   const watch_dog=(message="timeout",...xs)=>
+   {
+    const begin=now();
+    const timeout=0.4;
+    return ()=>check(now()-begin<timeout,message,...xs);
+   }
+   const set_timer=(on)=>
+   {
+    check(is_function(on));
+    const timer=context.timer;
+    const index_of=(x)=>timer.list.findIndex((y)=>y.id==x);
+    const exists=(x)=>index_of(x)>=0;
+    let result=1;
+    while(exists(result))
+    {
+     result++;
+    }
+    if(timer.id<0)
+    {
+     const on_interval=()=>
+     {
+      const list=clone(timer.list);
+      for(let current of list)
+      {
+       if(!exists(current.id))
+        continue;
+       const exception=report(current.on);
+       if(exception instanceof Error)
+       {
+        const index=index_of(current.id);
+        if(index>=0)
+         remove(timer.list,i);
+       }
+      }
+      if(timer.list.length==0)
+      {
+       clear_interval(timer.id);
+       timer.id=-1;
+      }
+     }
+     timer.id=set_interval(on_interval);
+    }
+    timer.list.push({id:result,on});
+    return result;
+   }
+   const clear_timer=(id)=>
+   {
+    check(is_number(id));
+    check(id>0);
+    const timer=context.timer;
+    const index=timer.list.findIndex((x)=>x.id==id);
+    check(index>=0);
+    remove(timer.list,index);
+   }
+   const waterfall=(...xs)=>
+   {
+    check(xs.length>0);
+    xs.forEach((x)=>check(is_function(x)));
+    const state=
+    {
+     done:false,
+     lambdas:clone(xs),
+     value:null,
+     timer:null,
+    };
+    const on_timer=()=>
+    {
+     const begin=now();
+     do
+     {
+      const lambda=front(state.lambdas);
+      const result=is_something(state.value)?lambda(state.value):lambda();
+      if(is_undefined(result))
+       return;
+      shift(state.lambdas);
+      state.value=result;
+      if(state.lambdas.length==0)
+      {
+       state.done=true;
+       clear_timer(state.timer);
+       return;
+      }
+     }
+     while(now()-begin<interval);
+    }
+    state.timer=set_timer(on_timer);
+    const result=()=>
+    {
+     if(!state.done)
+      return;
+     return state.value;
+    }
+    return result;
+   }
+   const partial=(lambda,...xs)=>
+   {
+    check(is_function(lambda));
+    return (...ys)=>lambda(...xs,...ys);
+   }
+   const inspect=(x)=>
+   {
+    if(is_nothing(x))
+     return type_name(x);
+    if(is_function(x))
+     return inspect({function:x.name.length>0?x.name:x.toString()});
+    const empty_object=(x)=>is_object(x)&&length(x)==0;
+    const result=trap(json,x);
+    if(is_defined(result)&&!empty_object(x))
+     return result;
+    const value=trap(clone,x);
+    if(is_defined(value)&&!empty_object(value))
+     return inspect(value);
+    return inspect({inspect:type_name(x)});
+   }
+   const source_data=()=>
+   {
+    const tag=location.pathname+location.search;
+    const source="\n".repeat(2)+document.documentElement.innerHTML;
+    return {tag,source};
+   }
+   const parse_path=(string)=>
+   {
+    check(is_string(string));
+    if(!is_parsable(string))
+     return;
+    const components=delimit(string,"/");
+    let dir="";
+    if(components.length>0)
+    {
+     if(back(components)=="/")
+      dir=components.splice(0).join("");
+     else
+      dir=components.splice(0,components.length-1).join("");
+    }
+    const base=components.join("");
+    const parts=delimit(base,".");
+    let name="";
+    if(parts.length>2)
+     name=parts.splice(0,parts.length-2).join("");
+    else
+     name=parts.splice(0).join("");
+    const ext=parts.join("");
+    check(dir+base==string);
+    check(dir+name+ext==string);
+    return {dir,base,name,ext};
+   }
+   const join_path=(...xs)=>replace(xs.join("/"),"//","/");
+   const platform="browser";
+   const setImmediate=requestAnimationFrame;
+   const argv=()=>[];
+   const is_v8=()=>navigator.userAgent.includes("Chrome");
+   set_immediate(entry);
+   const xhr=(url,method,args)=>
+   {
+    method=optional(method,"get");
+    check(is_string(url));
+    check(is_string(method));
+    check(url.length>0);
+    check(method.length>0);
+    const request=new XMLHttpRequest;
+    request.open(method,url);
+    request.overrideMimeType("text/plain");
+    const headers=()=>
+    {
+     const string=request.getAllResponseHeaders();
+     return optional(parse_headers(string),string);
+    }
+    const response=()=>optional(parse_json(request.response.trim()),request.response);
+    const state=
+    {
+     done:false,
+     status:null,
+     headers:null,
+     response:null,
+     error:null,
+     url,
+     method,
+     args
+    };
+    const on_load=(event)=>
+    {
+     state.done=true;
+     state.status=request.status;
+     state.headers=headers();
+     state.response=response();
+    }
+    const on_error=(event)=>
+    {
+     state.done=true;
+     state.status=request.status;
+     state.headers=headers();
+     state.error=event;
+    }
+    request.onload=partial(report,on_load);
+    request.onerror=partial(report,on_error);
+    if(is_defined(args))
+     request.send(json(args));
+    else
+     request.send();
+    const result=()=>
+    {
+     if(!state.done)
+      return;
+     if(is_something(state.error))
+     {
+      log(flatten(state));
+      stop("XHR error",state.status);
+     }
+     if(state.status!=200)
+     {
+      log(flatten(state));
+      stop("HTTP error",state.status);
+     }
+     const data=state.response;
+     const headers=state.headers;
+     return {data,headers};
+    }
+    return result;
+   }
+   const add_element=(node,tag,html="")=>
+   {
+    check(is_something(node));
+    check(is_string(tag));
+    check(is_string(html));
+    const result=document.createElement(tag);
+    result.innerHTML=html;
+    node.appendChild(result);
+    return result;
+   }
+   const gh_md=(string)=>
+   {
+    check(is_string(string));
+    if(string.length==0)
+     return (x)=>"";
+    const on_xhr=(response)=>response.data;
+    return waterfall(gh_xhr("markdown","post",{text:string}),on_xhr);
+   }
+   const gh_ls=(owner,repo)=>
+   {
+    check(is_string(owner));
+    check(is_string(repo));
+    check(owner.length>0);
+    check(repo.length>0);
+    const on_xhr=(response)=>
+    {
+     const result=[];
+     for(let current of response.data)
+     {
+      const type=current.type;
+      if(type=="dir")
+       continue;
+      const path=current.path;
+      const url=current.html_url;
+      const raw=current.download_url;
+      check(is_string(path));
+      check(is_string(url));
+      check(is_string(raw));
+      result.push({path,url,raw});
+     }
+     return result;
+    }
+    return waterfall(gh_xhr(join_path("repos",owner,repo,"contents")),on_xhr);
+   }
+   const gh_xhr=(path,method,data)=>
+   {
+    const url="https://api.github.com/";
+    const on_xhr=(response)=>
+    {
+     response.quota=response.headers["X-RateLimit-Remaining"];
+     return response;
+    }
+    return waterfall(xhr(url+path,method,data),on_xhr);
+   }
+   const md_link=(title,url=title)=>
+   {
+    check(is_string(title));
+    check(is_string(url));
+    check(title.length>0);
+    check(url.length>0);
+    return bracket(title)+paren(url);
+   }
+   const md_bold=(...xs)=>
+   {
+    const string=format(...xs);
+    check(string.length>0);
+    return "**"+string+"**";
+   }
+   const main=(...xs)=>
+   {
+    log("begin renderer");
+    const md_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl-2017-02.md";
+    const css_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl.css";
+    const page={};
+    const on_md=(response)=>
+    {
+     check(is_string(response.data));
+     page.md=response.data;
+     return true;
+    }
+    const on_css=(response)=>
+    {
+     check(is_string(response.data));
+     page.css=response.data;
+     return true;
+    }
+    const on_render=()=>
+    {
+     page.watcher=gh_md(page.md);
+     return true;
+    }
+    const on_display=()=>
+    {
+     const html=page.watcher();
+     if(is_undefined(html))
+      return;
+     const merge=
+     [
+      "<style>",
+       indent(page.css),
+      "</style>",
+      "",
+      html,
+     ];
+     const body=join(merge);
+     document.body.innerHTML=body;
+     console.log(body);
+     log("end renderer");
+     return true;
+    }
+    waterfall
+    (
+     xhr(md_url),on_md,
+     xhr(css_url),on_css,
+     on_render,
+     on_display
+    );
+   }
+  </script>
+ </body>
+</html>
