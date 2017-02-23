@@ -17,6 +17,8 @@
 - Chat: https://framateam.org/silexlabs/channels/town-square
  - http://projects.silexlabs.org/com/chat
  - http://com.silexlabs.org/chat
+ - http://join.silexlabs.org/chat
 - Newsletter: http://eepurl.com/F48q5
  - http://projects.silexlabs.org/com/newsletter
  - http://com.silexlabs.org/newsletter
+ - http://join.silexlabs.org/newsletter
