@@ -2,6 +2,11 @@
 
 - Rendu nl-2017-02: http://projects.silexlabs.org/com/sl-md-renderer.html
 
+## Tips markdown
+
+ - Résumé des possibilités: https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#headers
+ - Smiley: https://gist.github.com/rxaviers/7360908
+
 ## URLs
 
 - Silex Labs: https://www.silexlabs.org/
