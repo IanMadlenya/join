@@ -1,6 +1,6 @@
 ## Communication documents
 
-- Rendu nl-2017-02: http://projects.silexlabs.org/join/sl-md-renderer.html
+- Rendu Newsletters: http://projects.silexlabs.org/join/sl-md-renderer.html
 
 ## Tips markdown
 
