@@ -333,7 +333,12 @@
 
      //main
 
-     return main(...argv());
+     main(...argv());
+
+     //now
+
+     if(is_node())
+      log("now",now().toFixed(2));
     }
 
     //report
@@ -643,6 +648,14 @@
     return false;
    }
 
+   //is url
+
+   const is_url=(x)=>is_string(x)&&is_defined(parse_url(x));
+
+   //is node
+
+   const is_node=()=>!is_browser();
+
    //json
 
    const json=(x)=>
@@ -684,10 +697,15 @@
 
     check(range>=0);
 
-    const result=Math.random()*range;
+    let result=Math.random()*range;
 
     if(is_integer(range))
-     return trunc(result);
+     result=trunc(result);
+
+    //parano
+
+    check(result>=0);
+    check(result<range);
 
     return result;
    }
@@ -894,6 +912,40 @@
     const path=url.pathname;
     const search=url.search.slice(1);
     const hash=url.hash.slice(1);
+
+    //malformed
+
+   /* const left=href.toLowerCase();
+    const right=value.toLowerCase();
+
+    if(left==right)
+    {
+    }
+    else if(left==right+"/")
+    {
+    }
+    else
+     return;*/
+
+    //must have protocol
+
+    if(protocol=="file")
+    {
+     //allow no host
+    }
+    else if(protocol.length==0||host.length==0)
+     return;
+
+   /*
+    //control path
+
+    const excludes=[";",":",","];
+
+    for(let current of excludes)
+    {
+     if(path.includes(current))
+      return;
+    }*/
 
     return {href,protocol,host,port,user,password,path,search,hash};
    }
@@ -1429,7 +1481,7 @@
         //remove
 
         if(index>=0)
-         remove(timer.list,i);
+         remove(timer.list,index);
        }
       }
 
@@ -1614,6 +1666,16 @@
     return {tag,source};
    }
 
+   //is
+
+   //is browser
+
+   const is_browser=()=>true;
+
+   //is v8
+
+   const is_v8=()=>navigator.userAgent.includes("Chrome");
+
    //parse
 
    //parse path
@@ -1686,10 +1748,6 @@
 
    const argv=()=>[];
 
-   //is v8
-
-   const is_v8=()=>navigator.userAgent.includes("Chrome");
-
    //postpone entry
 
    set_immediate(entry);
@@ -1700,10 +1758,9 @@
    {
     method=optional(method,"get");
 
-    check(is_string(url));
+    check(is_url(url));
     check(is_string(method));
 
-    check(url.length>0);
     check(method.length>0);
 
     //open
@@ -1853,10 +1910,11 @@
 
    //gh ls
 
-   const gh_ls=(owner,repo)=>
+   const gh_ls=(owner,repo,path="")=>
    {
     check(is_string(owner));
     check(is_string(repo));
+    check(is_string(path));
 
     check(owner.length>0);
     check(repo.length>0);
@@ -1890,7 +1948,7 @@
 
     //waterfall
 
-    return waterfall(gh_xhr(join_path("repos",owner,repo,"contents")),on_xhr);
+    return waterfall(gh_xhr(join_path("repos",owner,repo,"contents",path)),on_xhr);
    }
 
    //gh xhr
@@ -1941,14 +1999,16 @@
     return "**"+string+"**";
    }
 
-   const main=(...xs)=>
+   //github
+
+   //gh css md
+
+   const gh_css_md=(md,css)=>
    {
-    log("begin renderer");
+    check(is_url(md));
+    check(is_url(css));
 
-    const md_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl-2017-02.md";
-    const css_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl.css";
-
-    const page={};
+    const space={};
 
     //on md
 
@@ -1956,7 +2016,7 @@
     {
      check(is_string(response.data));
 
-     page.md=response.data;
+     space.md=response.data;
 
      return true;
     }
@@ -1967,7 +2027,7 @@
     {
      check(is_string(response.data));
 
-     page.css=response.data;
+     space.css=response.data;
 
      return true;
     }
@@ -1976,38 +2036,110 @@
 
     const on_render=()=>
     {
-     page.watcher=gh_md(page.md);
+     space.watcher=gh_md(space.md);
 
      return true;
     }
 
-    //on display
+    //on merge
 
-    const on_display=()=>
+    const on_merge=()=>
     {
-     const html=page.watcher();
+     const html=space.watcher();
 
      if(is_undefined(html))
       return;
 
-     //merge
+     //format
 
-     const merge=
+     const page=
      [
       "<style>",
-       indent(page.css),
+       indent(space.css),
       "</style>",
       "",
       html,
      ];
 
-     const body=join(merge);
+     return join(page);
+    }
 
+    //waterfall
+
+    return waterfall
+    (
+     xhr(md),on_md,
+     xhr(css),on_css,
+     on_render,
+     on_merge
+    );
+   }
+
+   const main=(...xs)=>
+   {
+    const search=parse_url(to_string(location)).search;
+
+    //ls
+
+    if(search.length==0)
+    {
+     log("begin ls");
+
+     //on ls
+
+     const on_ls=(data)=>
+     {
+      //format
+
+      const strings=[];
+
+      for(let current of data)
+      {
+       const link=current.url.link(location+"?"+current.path);
+
+       strings.push("<li>"+link+"</li>");
+      }
+
+      //update
+
+      document.body.innerHTML="<ul>"+join(strings)+"</ul>";
+
+      log("end ls");
+
+      return true;
+     }
+
+     //waterfall
+
+     waterfall(gh_ls("silexlabs","join","nl"),on_ls);
+
+     return;
+    }
+
+    //render
+
+    /*const parts=search.split("/");
+
+    log("search",json(search));
+    log("parts",parts);
+    return;*/
+    log("begin renderer");
+
+   // const md_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl-2017-02.md";
+   // const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+
+    const md_url="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
+    const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+
+    //on html
+
+    const on_html=(html)=>
+    {
      //update
 
-     document.body.innerHTML=body;
+     document.body.innerHTML=html;
 
-     console.log(body);
+     console.log(html);
 
      log("end renderer");
 
@@ -2018,10 +2150,8 @@
 
     waterfall
     (
-     xhr(md_url),on_md,
-     xhr(css_url),on_css,
-     on_render,
-     on_display
+     gh_css_md(md_url,css_url),
+     on_html
     );
    }
   </script>

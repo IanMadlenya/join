@@ -168,9 +168,11 @@
     const go=()=>
     {
      check(is_strict());
-     const compile_date=space("Feb 23 2017","12:37:12");
+     const compile_date=space("Feb 25 2017","21:54:29");
      log("compile",json(space(ago(compile_date),"ago")));
-     return main(...argv());
+     main(...argv());
+     if(is_node())
+      log("now",now().toFixed(2));
     }
     return report(go);
    }
@@ -315,6 +317,8 @@
      return is_defined(parse_number(x));
     return false;
    }
+   const is_url=(x)=>is_string(x)&&is_defined(parse_url(x));
+   const is_node=()=>!is_browser();
    const json=(x)=>
    {
     const result=JSON.stringify(x);
@@ -330,9 +334,11 @@
    {
     check(is_number(range))
     check(range>=0);
-    const result=Math.random()*range;
+    let result=Math.random()*range;
     if(is_integer(range))
-     return trunc(result);
+     result=trunc(result);
+    check(result>=0);
+    check(result<range);
     return result;
    }
    const length=(x)=>
@@ -430,6 +436,11 @@
     const path=url.pathname;
     const search=url.search.slice(1);
     const hash=url.hash.slice(1);
+    if(protocol=="file")
+    {
+    }
+    else if(protocol.length==0||host.length==0)
+     return;
     return {href,protocol,host,port,user,password,path,search,hash};
    }
    const parse_headers=(string)=>
@@ -695,7 +706,7 @@
        {
         const index=index_of(current.id);
         if(index>=0)
-         remove(timer.list,i);
+         remove(timer.list,index);
        }
       }
       if(timer.list.length==0)
@@ -784,6 +795,8 @@
     const source="\n".repeat(2)+document.documentElement.innerHTML;
     return {tag,source};
    }
+   const is_browser=()=>true;
+   const is_v8=()=>navigator.userAgent.includes("Chrome");
    const parse_path=(string)=>
    {
     check(is_string(string));
@@ -814,14 +827,12 @@
    const platform="browser";
    const setImmediate=requestAnimationFrame;
    const argv=()=>[];
-   const is_v8=()=>navigator.userAgent.includes("Chrome");
    set_immediate(entry);
    const xhr=(url,method,args)=>
    {
     method=optional(method,"get");
-    check(is_string(url));
+    check(is_url(url));
     check(is_string(method));
-    check(url.length>0);
     check(method.length>0);
     const request=new XMLHttpRequest;
     request.open(method,url);
@@ -901,10 +912,11 @@
     const on_xhr=(response)=>response.data;
     return waterfall(gh_xhr("markdown","post",{text:string}),on_xhr);
    }
-   const gh_ls=(owner,repo)=>
+   const gh_ls=(owner,repo,path="")=>
    {
     check(is_string(owner));
     check(is_string(repo));
+    check(is_string(path));
     check(owner.length>0);
     check(repo.length>0);
     const on_xhr=(response)=>
@@ -925,7 +937,7 @@
      }
      return result;
     }
-    return waterfall(gh_xhr(join_path("repos",owner,repo,"contents")),on_xhr);
+    return waterfall(gh_xhr(join_path("repos",owner,repo,"contents",path)),on_xhr);
    }
    const gh_xhr=(path,method,data)=>
    {
@@ -951,54 +963,86 @@
     check(string.length>0);
     return "**"+string+"**";
    }
-   const main=(...xs)=>
+   const gh_css_md=(md,css)=>
    {
-    log("begin renderer");
-    const md_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl-2017-02.md";
-    const css_url="https://raw.githubusercontent.com/silexlabs/com/master/nl/nl.css";
-    const page={};
+    check(is_url(md));
+    check(is_url(css));
+    const space={};
     const on_md=(response)=>
     {
      check(is_string(response.data));
-     page.md=response.data;
+     space.md=response.data;
      return true;
     }
     const on_css=(response)=>
     {
      check(is_string(response.data));
-     page.css=response.data;
+     space.css=response.data;
      return true;
     }
     const on_render=()=>
     {
-     page.watcher=gh_md(page.md);
+     space.watcher=gh_md(space.md);
      return true;
     }
-    const on_display=()=>
+    const on_merge=()=>
     {
-     const html=page.watcher();
+     const html=space.watcher();
      if(is_undefined(html))
       return;
-     const merge=
+     const page=
      [
       "<style>",
-       indent(page.css),
+       indent(space.css),
       "</style>",
       "",
       html,
      ];
-     const body=join(merge);
-     document.body.innerHTML=body;
-     console.log(body);
+     return join(page);
+    }
+    return waterfall
+    (
+     xhr(md),on_md,
+     xhr(css),on_css,
+     on_render,
+     on_merge
+    );
+   }
+   const main=(...xs)=>
+   {
+    const search=parse_url(to_string(location)).search;
+    if(search.length==0)
+    {
+     log("begin ls");
+     const on_ls=(data)=>
+     {
+      const strings=[];
+      for(let current of data)
+      {
+       const link=current.url.link(location+"?"+current.path);
+       strings.push("<li>"+link+"</li>");
+      }
+      document.body.innerHTML="<ul>"+join(strings)+"</ul>";
+      log("end ls");
+      return true;
+     }
+     waterfall(gh_ls("silexlabs","join","nl"),on_ls);
+     return;
+    }
+    log("begin renderer");
+    const md_url="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
+    const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+    const on_html=(html)=>
+    {
+     document.body.innerHTML=html;
+     console.log(html);
      log("end renderer");
      return true;
     }
     waterfall
     (
-     xhr(md_url),on_md,
-     xhr(css_url),on_css,
-     on_render,
-     on_display
+     gh_css_md(md_url,css_url),
+     on_html
     );
    }
   </script>
