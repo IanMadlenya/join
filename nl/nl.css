@@ -5,9 +5,13 @@ body
  font-family:arial, sans-serif;
 }
 
-/*body img:first-of-type*/
-img
+body img:first-of-type
 {
  float:right;
- max-height:100px;
+}
+
+img
+{
+ float:none;
+ max-height:200px;
 }
