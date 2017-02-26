@@ -335,15 +335,28 @@
 
      main(...argv());
 
-     //now
+     //final
 
-     if(is_node())
-      log("now",now().toFixed(2));
+     final();
     }
 
     //report
 
     return report(go);
+   }
+
+   //final
+
+   const final=()=>
+   {
+    //active timers
+
+    if(context.timer.list.length>0)
+     return;
+
+    //duration
+
+    log("duration",now().toFixed(2));
    }
 
    //error
@@ -1492,6 +1505,10 @@
        clear_interval(timer.id);
 
        timer.id=-1;
+
+       //final
+
+       final();
       }
      }
 
@@ -2075,61 +2092,52 @@
     );
    }
 
-   const main=(...xs)=>
+   //html
+
+   //html gh ls
+
+   const html_gh_ls=(owner,repo,path="")=>
    {
-    const search=parse_url(to_string(location)).search;
+    check(is_string(owner));
+    check(is_string(repo));
+    check(is_string(path));
 
-    //ls
+    check(owner.length>0);
+    check(repo.length>0);
 
-    if(search.length==0)
+    //on ls
+
+    const on_ls=(data)=>
     {
-     log("begin ls");
+     //format
 
-     //on ls
+     const strings=[];
 
-     const on_ls=(data)=>
+     for(let current of data)
      {
-      //format
+      const link=current.url.link(location+"?"+current.path);
 
-      const strings=[];
-
-      for(let current of data)
-      {
-       const link=current.url.link(location+"?"+current.path);
-
-       strings.push("<li>"+link+"</li>");
-      }
-
-      //update
-
-      document.body.innerHTML="<ul>"+join(strings)+"</ul>";
-
-      log("end ls");
-
-      return true;
+      strings.push("<li>"+link+"</li>");
      }
 
-     //waterfall
+     //update
 
-     waterfall(gh_ls("silexlabs","join","nl"),on_ls);
+     document.body.innerHTML="<ul>"+join(strings)+"</ul>";
 
-     return;
+     return true;
     }
 
-    //render
+    //waterfall
 
-    /*const parts=search.split("/");
+    return waterfall(gh_ls(owner,repo,path),on_ls);
+   }
 
-    log("search",json(search));
-    log("parts",parts);
-    return;*/
-    log("begin renderer");
+   //html gh css md
 
-   // const md_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl-2017-02.md";
-   // const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
-
-    const md_url="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
-    const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+   const html_gh_css_md=(md,css)=>
+   {
+    check(is_url(md));
+    check(is_url(css));
 
     //on html
 
@@ -2141,18 +2149,43 @@
 
      console.log(html);
 
-     log("end renderer");
-
      return true;
     }
 
     //waterfall
 
-    waterfall
+    return waterfall
     (
-     gh_css_md(md_url,css_url),
+     gh_css_md(md,css),
      on_html
     );
+   }
+
+   //main
+
+   const main=(...xs)=>
+   {
+    const search=parse_url(to_string(location)).search;
+
+    //ls
+
+    if(search.length==0)
+    {
+     log("begin ls");
+
+     html_gh_ls("silexlabs","join","nl");
+
+     return;
+    }
+
+    //render
+
+    log("begin render");
+
+    const md="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
+    const css="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+
+    html_gh_css_md(md,css);
    }
   </script>
  </body>

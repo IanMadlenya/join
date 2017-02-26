@@ -168,13 +168,18 @@
     const go=()=>
     {
      check(is_strict());
-     const compile_date=space("Feb 25 2017","21:54:29");
+     const compile_date=space("Feb 26 2017","13:01:45");
      log("compile",json(space(ago(compile_date),"ago")));
      main(...argv());
-     if(is_node())
-      log("now",now().toFixed(2));
+     final();
     }
     return report(go);
+   }
+   const final=()=>
+   {
+    if(context.timer.list.length>0)
+     return;
+    log("duration",now().toFixed(2));
    }
    const stop=(message="stop",...xs)=>
    {
@@ -713,6 +718,7 @@
       {
        clear_interval(timer.id);
        timer.id=-1;
+       final();
       }
      }
      timer.id=set_interval(on_interval);
@@ -1008,42 +1014,55 @@
      on_merge
     );
    }
+   const html_gh_ls=(owner,repo,path="")=>
+   {
+    check(is_string(owner));
+    check(is_string(repo));
+    check(is_string(path));
+    check(owner.length>0);
+    check(repo.length>0);
+    const on_ls=(data)=>
+    {
+     const strings=[];
+     for(let current of data)
+     {
+      const link=current.url.link(location+"?"+current.path);
+      strings.push("<li>"+link+"</li>");
+     }
+     document.body.innerHTML="<ul>"+join(strings)+"</ul>";
+     return true;
+    }
+    return waterfall(gh_ls(owner,repo,path),on_ls);
+   }
+   const html_gh_css_md=(md,css)=>
+   {
+    check(is_url(md));
+    check(is_url(css));
+    const on_html=(html)=>
+    {
+     document.body.innerHTML=html;
+     console.log(html);
+     return true;
+    }
+    return waterfall
+    (
+     gh_css_md(md,css),
+     on_html
+    );
+   }
    const main=(...xs)=>
    {
     const search=parse_url(to_string(location)).search;
     if(search.length==0)
     {
      log("begin ls");
-     const on_ls=(data)=>
-     {
-      const strings=[];
-      for(let current of data)
-      {
-       const link=current.url.link(location+"?"+current.path);
-       strings.push("<li>"+link+"</li>");
-      }
-      document.body.innerHTML="<ul>"+join(strings)+"</ul>";
-      log("end ls");
-      return true;
-     }
-     waterfall(gh_ls("silexlabs","join","nl"),on_ls);
+     html_gh_ls("silexlabs","join","nl");
      return;
     }
-    log("begin renderer");
-    const md_url="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
-    const css_url="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
-    const on_html=(html)=>
-    {
-     document.body.innerHTML=html;
-     console.log(html);
-     log("end renderer");
-     return true;
-    }
-    waterfall
-    (
-     gh_css_md(md_url,css_url),
-     on_html
-    );
+    log("begin render");
+    const md="https://raw.githubusercontent.com/silexlabs/join/master/"+search;
+    const css="https://raw.githubusercontent.com/silexlabs/join/master/nl/nl.css";
+    html_gh_css_md(md,css);
    }
   </script>
  </body>
