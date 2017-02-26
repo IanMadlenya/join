@@ -168,7 +168,7 @@
     const go=()=>
     {
      check(is_strict());
-     const compile_date=space("Feb 26 2017","13:01:45");
+     const compile_date=space("Feb 26 2017","14:32:12");
      log("compile",json(space(ago(compile_date),"ago")));
      main(...argv());
      final();
@@ -977,6 +977,8 @@
     const on_md=(response)=>
     {
      check(is_string(response.data));
+     const expire=ago(response.headers.Expires);
+     log("expire",json(expire));
      space.md=response.data;
      return true;
     }

@@ -2033,6 +2033,10 @@
     {
      check(is_string(response.data));
 
+     const expire=ago(response.headers.Expires);
+
+     log("expire",json(expire));
+
      space.md=response.data;
 
      return true;
