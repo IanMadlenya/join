@@ -5,14 +5,8 @@ body
  font-family:arial, sans-serif;
 }
 
-/*body img:first-of-type
-{
- float:right;
-}*/
-
 img
 {
- /*float:none;*/
- max-width:200px;
+ max-width:300px;
  max-height:200px;
 }
