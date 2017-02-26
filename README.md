@@ -1,7 +1,7 @@
 ## Communication documents
 
 - Rendu Newsletters: http://projects.silexlabs.org/join/sl-md-renderer.html
-- Tips markdow: https://github.com/silexlabs/join/blob/master/tips-markdown.md
+- Tips markdown: https://github.com/silexlabs/join/blob/master/tips-markdown.md
 
 ## URLs
 
