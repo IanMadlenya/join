@@ -5,7 +5,9 @@ body
  font-family:arial, sans-serif;
 }
 
-body img:first-of-type
+/*body img:first-of-type*/
+img
 {
  float:right;
+ max-height:100px;
 }
