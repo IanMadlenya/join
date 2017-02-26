@@ -10,7 +10,7 @@
   - on peut ajouter un "id" sur `<img>` (Exemple: `<img id="logo">` donne `<img id="user-content-logo">`
  - Smiley: https://gist.github.com/rxaviers/7360908
  - "Les lignes sont collées": Rajouter **deux espaces** à la fin de la ligne précédente.
- - "Pull Request": Pas obligé - Plus simple: Modifier directement dans Github - Demander les droits sur le chat
+ - "Pull Request": Pas obligé - Plus simple: **Modifier directement** dans Github - Demander les droits sur le chat
 
 ## URLs
 
