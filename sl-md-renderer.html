@@ -11,6 +11,29 @@
    {
     return !this;
    }
+   const app=
+   {
+    log:{active:false,path:""},
+    timer:{id:-1,list:[]},
+   }
+   const intro=()=>
+   {
+    const entry=()=>
+    {
+     check(is_strict());
+     const compile_date=space("Feb 28 2017","08:51:17");
+     log("compile",json(space(ago(compile_date),"ago")));
+     main(...argv());
+     final();
+    }
+    return report(entry);
+   }
+   const final=()=>
+   {
+    if(app.timer.list.length>0)
+     return;
+    log("duration",now().toFixed(2),bracket(app_name()));
+   }
    const clear=(array)=>
    {
     check(is_array(array));
@@ -158,28 +181,6 @@
       report.push(indent(string));
     }
     return ellipsis(join(report));
-   }
-   const context=
-   {
-    timer:{id:-1,list:[]},
-   }
-   const entry=()=>
-   {
-    const go=()=>
-    {
-     check(is_strict());
-     const compile_date=space("Feb 26 2017","14:32:12");
-     log("compile",json(space(ago(compile_date),"ago")));
-     main(...argv());
-     final();
-    }
-    return report(go);
-   }
-   const final=()=>
-   {
-    if(context.timer.list.length>0)
-     return;
-    log("duration",now().toFixed(2));
    }
    const stop=(message="stop",...xs)=>
    {
@@ -330,7 +331,6 @@
     check(is_string(result));
     return result;
    }
-   const log=(...xs)=>console.log(format(...xs));
    const min=Math.min;
    const max=Math.max;
    const trunc=Math.trunc;
@@ -446,7 +446,8 @@
     }
     else if(protocol.length==0||host.length==0)
      return;
-    return {href,protocol,host,port,user,password,path,search,hash};
+    const page=protocol+"://"+host+path;
+    return {page,href,protocol,host,port,user,password,path,search,hash};
    }
    const parse_headers=(string)=>
    {
@@ -689,7 +690,7 @@
    const set_timer=(on)=>
    {
     check(is_function(on));
-    const timer=context.timer;
+    const timer=app.timer;
     const index_of=(x)=>timer.list.findIndex((y)=>y.id==x);
     const exists=(x)=>index_of(x)>=0;
     let result=1;
@@ -730,7 +731,7 @@
    {
     check(is_number(id));
     check(id>0);
-    const timer=context.timer;
+    const timer=app.timer;
     const index=timer.list.findIndex((x)=>x.id==id);
     check(index>=0);
     remove(timer.list,index);
@@ -780,6 +781,12 @@
     check(is_function(lambda));
     return (...ys)=>lambda(...xs,...ys);
    }
+   const platform="browser";
+   const setImmediate=requestAnimationFrame;
+   const app_name=()=>file_name(parse_url(argv0()).path);
+   const argv0=()=>parse_url(to_string(location)).page;
+   const argv=()=>[];
+   set_immediate(intro);
    const inspect=(x)=>
    {
     if(is_nothing(x))
@@ -803,6 +810,7 @@
    }
    const is_browser=()=>true;
    const is_v8=()=>navigator.userAgent.includes("Chrome");
+   const log=(...xs)=>console.log(format(...xs));
    const parse_path=(string)=>
    {
     check(is_string(string));
@@ -830,10 +838,6 @@
     return {dir,base,name,ext};
    }
    const join_path=(...xs)=>replace(xs.join("/"),"//","/");
-   const platform="browser";
-   const setImmediate=requestAnimationFrame;
-   const argv=()=>[];
-   set_immediate(entry);
    const xhr=(url,method,args)=>
    {
     method=optional(method,"get");

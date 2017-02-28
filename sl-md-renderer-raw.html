@@ -23,6 +23,62 @@
     return !this;
    }
 
+   //app
+
+   //app
+
+   const app=
+   {
+    log:{active:false,path:""},
+    timer:{id:-1,list:[]},
+   }
+
+   //intro
+
+   const intro=()=>
+   {
+    //entry
+
+    const entry=()=>
+    {
+     //assert strict mode
+
+     check(is_strict());
+
+     //compile date
+
+     const compile_date=space(__DATE__,__TIME__);
+
+     log("compile",json(space(ago(compile_date),"ago")));
+
+     //main
+
+     main(...argv());
+
+     //final
+
+     final();
+    }
+
+    //report
+
+    return report(entry);
+   }
+
+   //final
+
+   const final=()=>
+   {
+    //active timers
+
+    if(app.timer.list.length>0)
+     return;
+
+    //duration
+
+    log("duration",now().toFixed(2),bracket(app_name()));
+   }
+
    //array
 
    //clear
@@ -304,59 +360,6 @@
     //ellipsis
 
     return ellipsis(join(report));
-   }
-
-   //entry
-
-   //context
-
-   const context=
-   {
-    timer:{id:-1,list:[]},
-   }
-
-   //entry
-
-   const entry=()=>
-   {
-    const go=()=>
-    {
-     //assert strict mode
-
-     check(is_strict());
-
-     //compile date
-
-     const compile_date=space(__DATE__,__TIME__);
-
-     log("compile",json(space(ago(compile_date),"ago")));
-
-     //main
-
-     main(...argv());
-
-     //final
-
-     final();
-    }
-
-    //report
-
-    return report(go);
-   }
-
-   //final
-
-   const final=()=>
-   {
-    //active timers
-
-    if(context.timer.list.length>0)
-     return;
-
-    //duration
-
-    log("duration",now().toFixed(2));
    }
 
    //error
@@ -680,10 +683,6 @@
     return result;
    }
 
-   //log
-
-   const log=(...xs)=>console.log(format(...xs));
-
    //math
 
    //min
@@ -960,7 +959,11 @@
       return;
     }*/
 
-    return {href,protocol,host,port,user,password,path,search,hash};
+    //page
+
+    const page=protocol+"://"+host+path;
+
+    return {page,href,protocol,host,port,user,password,path,search,hash};
    }
 
    //parse headers
@@ -1441,7 +1444,7 @@
    {
     check(is_function(on));
 
-    const timer=context.timer;
+    const timer=app.timer;
 
     //index of
 
@@ -1532,7 +1535,7 @@
 
     check(id>0);
 
-    const timer=context.timer;
+    const timer=app.timer;
 
     //remove
 
@@ -1634,6 +1637,30 @@
     return (...ys)=>lambda(...xs,...ys);
    }
 
+   //app
+
+   const platform="browser";
+
+   //setImmediate
+
+   const setImmediate=requestAnimationFrame;
+
+   //app name
+
+   const app_name=()=>file_name(parse_url(argv0()).path);
+
+   //argv0
+
+   const argv0=()=>parse_url(to_string(location)).page;
+
+   //argv
+
+   const argv=()=>[];
+
+   //postpone intro
+
+   set_immediate(intro);
+
    //debug
 
    //inspect
@@ -1692,6 +1719,10 @@
    //is v8
 
    const is_v8=()=>navigator.userAgent.includes("Chrome");
+
+   //log
+
+   const log=(...xs)=>console.log(format(...xs));
 
    //parse
 
@@ -1752,22 +1783,6 @@
    //join path
 
    const join_path=(...xs)=>replace(xs.join("/"),"//","/");
-
-   //platform
-
-   const platform="browser";
-
-   //setImmediate
-
-   const setImmediate=requestAnimationFrame;
-
-   //argv
-
-   const argv=()=>[];
-
-   //postpone entry
-
-   set_immediate(entry);
 
    //xhr
 
