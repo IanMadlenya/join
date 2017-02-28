@@ -21,7 +21,7 @@
     const entry=()=>
     {
      check(is_strict());
-     const compile_date=space("Feb 28 2017","08:53:11");
+     const compile_date=space("Feb 28 2017","08:58:50");
      log("compile",json(space(ago(compile_date),"ago")));
      main(...argv());
      final();
@@ -330,6 +330,20 @@
     const result=JSON.stringify(x);
     check(is_string(result));
     return result;
+   }
+   const md_link=(title,url=title)=>
+   {
+    check(is_string(title));
+    check(is_string(url));
+    check(title.length>0);
+    check(url.length>0);
+    return bracket(title)+paren(url);
+   }
+   const md_bold=(...xs)=>
+   {
+    const string=format(...xs);
+    check(string.length>0);
+    return "**"+string+"**";
    }
    const min=Math.min;
    const max=Math.max;
@@ -958,20 +972,6 @@
      return response;
     }
     return waterfall(xhr(url+path,method,data),on_xhr);
-   }
-   const md_link=(title,url=title)=>
-   {
-    check(is_string(title));
-    check(is_string(url));
-    check(title.length>0);
-    check(url.length>0);
-    return bracket(title)+paren(url);
-   }
-   const md_bold=(...xs)=>
-   {
-    const string=format(...xs);
-    check(string.length>0);
-    return "**"+string+"**";
    }
    const gh_css_md=(md,css)=>
    {

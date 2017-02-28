@@ -683,6 +683,32 @@
     return result;
    }
 
+   //markdown
+
+   //md link
+
+   const md_link=(title,url=title)=>
+   {
+    check(is_string(title));
+    check(is_string(url));
+
+    check(title.length>0);
+    check(url.length>0);
+
+    return bracket(title)+paren(url);
+   }
+
+   //md bold
+
+   const md_bold=(...xs)=>
+   {
+    const string=format(...xs);
+
+    check(string.length>0);
+
+    return "**"+string+"**";
+   }
+
    //math
 
    //min
@@ -2003,32 +2029,6 @@
     //waterfall
 
     return waterfall(xhr(url+path,method,data),on_xhr);
-   }
-
-   //markdown
-
-   //md link
-
-   const md_link=(title,url=title)=>
-   {
-    check(is_string(title));
-    check(is_string(url));
-
-    check(title.length>0);
-    check(url.length>0);
-
-    return bracket(title)+paren(url);
-   }
-
-   //md bold
-
-   const md_bold=(...xs)=>
-   {
-    const string=format(...xs);
-
-    check(string.length>0);
-
-    return "**"+string+"**";
    }
 
    //github
